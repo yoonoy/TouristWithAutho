@@ -1,0 +1,18 @@
+.env
+.env.*
+
+# Environment variables
+.env
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+!.env.example
+node_modules/
+.env
+*.code-workspace

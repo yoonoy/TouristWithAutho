@@ -1,0 +1,1664 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Travel Horizon API",
+    "version": "1.0.0",
+    "description": "HTTP API for public site content, admin editing, photo uploads, and consultation requests."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current Travel Horizon server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Public"
+    },
+    {
+      "name": "Admin"
+    },
+    {
+      "name": "Accounts",
+      "description": "Visitor registration, e-mail confirmation, sign-in and password reset."
+    }
+  ],
+  "paths": {
+    "/api/content": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get site content",
+        "responses": {
+          "200": {
+            "description": "The current site content.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "content"
+                  ],
+                  "properties": {
+                    "content": {
+                      "$ref": "#/components/schemas/SiteContent"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Save site content for a locale",
+        "description": "Requires an admin session cookie and a same-origin request. The locale defaults to en.",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "default": "en"
+                  },
+                  "content": {
+                    "$ref": "#/components/schemas/LocaleContent"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Content saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Sign in to the admin API",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in. The response sets the admin_session cookie.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "HttpOnly, SameSite=Strict admin session cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password did not match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many sign-in attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Sign out",
+        "description": "Expires the current admin session cookie.",
+        "responses": {
+          "200": {
+            "description": "Signed out.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Expired admin_session cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/consultation": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Submit a consultation request",
+        "description": "Requires a same-origin request. Successful requests are forwarded to the configured Telegram chat.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "surname",
+                  "phone",
+                  "destination"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "surname": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 25
+                  },
+                  "destination": {
+                    "type": "string",
+                    "enum": [
+                      "0",
+                      "1",
+                      "2"
+                    ]
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "default": "en"
+                  },
+                  "website": {
+                    "type": "string",
+                    "description": "Spam honeypot; leave empty."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "description": "Too many consultation requests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Consultation could not be delivered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Telegram delivery is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/uploads": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Upload a photo",
+        "description": "Requires an admin session cookie and a same-origin request. Images may be JPEG, PNG, or WebP up to 8 MB.",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Photo uploaded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "description": "Photo exceeds the 8 MB limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported image type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List editable public files",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Editable public file names.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "files"
+                  ],
+                  "properties": {
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/files/{fileName}": {
+      "parameters": [
+        {
+          "name": "fileName",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "index.html",
+              "styles.css",
+              "script.js"
+            ]
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Read an editable public file",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File name and source text.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Replace an editable public file",
+        "description": "Requires an admin session cookie and a same-origin request.",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileSaveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/uploads/{fileName}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get an uploaded photo",
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}\\.(jpg|png|webp)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded photo binary data.",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Create an account and e-mail a confirmation code",
+        "description": "Creates an unconfirmed account and sends a 6-digit code. If the e-mail has an unfinished registration, the details are replaced and a new code is sent. Same-origin requests only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "firstName",
+                  "lastName",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "firstName": {
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "At least 8 characters, with a letter and a number."
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "description": "Language of the e-mail. Defaults to en."
+                  },
+                  "website": {
+                    "type": "string",
+                    "description": "Honeypot. Leave empty."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; confirmation code sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "verificationRequired": {
+                      "type": "boolean"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid e-mail, name or password.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail is already registered and confirmed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The e-mail could not be sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "E-mail sending is not configured (production only).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Confirm the e-mail with the code and sign in",
+        "description": "A code allows 5 tries and expires after 10 minutes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$",
+                    "description": "6-digit code from the e-mail."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "E-mail confirmed and signed in.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "HttpOnly user_session cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Wrong or expired code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/resend-code": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Send a new confirmation or reset code",
+        "description": "Always answers ok so e-mail addresses cannot be probed. A new code is sent at most once per minute.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "verify",
+                      "reset"
+                    ],
+                    "default": "verify"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "description": "Language of the e-mail. Defaults to en."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The e-mail could not be sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Sign in with e-mail and password",
+        "description": "If the e-mail is not confirmed yet, a new code is sent and the answer is 403 with code not_verified.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "description": "Language of the e-mail. Defaults to en."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "HttpOnly user_session cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-mail or password is not correct.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-mail not confirmed (code not_verified) or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many sign-in attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Sign out",
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Get the signed-in visitor",
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current visitor, or null when nobody is signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "user"
+                  ],
+                  "properties": {
+                    "user": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "E-mail a password reset code",
+        "description": "Always answers ok so e-mail addresses cannot be probed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ky",
+                      "ru"
+                    ],
+                    "description": "Language of the e-mail. Defaults to en."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The e-mail could not be sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Set a new password using the reset code",
+        "description": "Signs the account out on every device.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$",
+                    "description": "6-digit code from the e-mail."
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "At least 8 characters, with a letter and a number."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Wrong or expired code, or weak password.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request origin was not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Change the password while signed in",
+        "description": "Other devices are signed out; this one stays signed in.",
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "password",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "At least 8 characters, with a letter and a number."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Weak new password.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong current password or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "admin_session",
+        "description": "Sign in using POST /api/login. Swagger UI on the same origin will send the session cookie automatically."
+      },
+      "UserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "user_session",
+        "description": "Set by POST /api/auth/login or /api/auth/verify-email. HttpOnly cookie, valid for 30 days."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "The request was invalid.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Sign in to continue.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The request origin was not allowed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OkResponse": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "FileResponse": {
+        "type": "object",
+        "required": [
+          "name",
+          "content"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "FileSaveResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "name"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SiteContent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LocaleContent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "locales": {
+                "type": "object",
+                "properties": {
+                  "ky": {
+                    "$ref": "#/components/schemas/LocaleContent"
+                  },
+                  "ru": {
+                    "$ref": "#/components/schemas/LocaleContent"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LocaleContent": {
+        "type": "object",
+        "required": [
+          "hero",
+          "journeys",
+          "land"
+        ],
+        "properties": {
+          "hero": {
+            "type": "object",
+            "required": [
+              "eyebrow",
+              "titleLine",
+              "titleEmphasis",
+              "copyFirst",
+              "copySecond"
+            ],
+            "properties": {
+              "eyebrow": {
+                "type": "string"
+              },
+              "titleLine": {
+                "type": "string"
+              },
+              "titleEmphasis": {
+                "type": "string"
+              },
+              "copyFirst": {
+                "type": "string"
+              },
+              "copySecond": {
+                "type": "string"
+              }
+            }
+          },
+          "journeys": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "duration",
+                "title",
+                "description",
+                "image",
+                "alt"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "duration": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "land": {
+            "type": "object",
+            "required": [
+              "titleLine",
+              "titleEmphasis",
+              "description",
+              "image",
+              "alt",
+              "caption"
+            ],
+            "properties": {
+              "titleLine": {
+                "type": "string"
+              },
+              "titleEmphasis": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              },
+              "caption": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "AuthError": {
+        "type": "object",
+        "required": [
+          "error",
+          "code"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "invalid_input",
+              "invalid_email",
+              "invalid_name",
+              "weak_password",
+              "email_taken",
+              "bad_credentials",
+              "not_verified",
+              "bad_code",
+              "code_expired",
+              "too_many_attempts",
+              "rate_limited",
+              "email_failed",
+              "email_not_configured",
+              "unauthorized",
+              "wrong_password",
+              "origin",
+              "not_found"
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "firstName",
+          "lastName"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "user"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      }
+    }
+  }
+}
